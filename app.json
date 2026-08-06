@@ -38,6 +38,14 @@
             "backgroundColor": "#000000"
           }
         }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Reportit uses your photo library so you can attach a picture to a report.",
+          "cameraPermission": "Reportit uses your camera so you can take a photo to attach to a report.",
+          "microphonePermission": false
+        }
       ]
     ],
     "experiments": {

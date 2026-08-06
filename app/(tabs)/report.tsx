@@ -1,6 +1,8 @@
+import * as ImagePicker from 'expo-image-picker';
 import { useState } from 'react';
 import {
   ActivityIndicator,
+  Image,
   Modal,
   Pressable,
   ScrollView,
@@ -10,6 +12,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { uploadImageToCloudinary } from '@/lib/cloudinary';
 import { createReport } from '@/lib/reports';
 import { isNonEmpty } from '@/lib/validation';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -38,11 +41,14 @@ export default function ReportScreen() {
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState<Category | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [photoUri, setPhotoUri] = useState<string | null>(null);
 
   const [errors, setErrors] = useState<FormErrors>({});
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
+  const [phase, setPhase] = useState<'idle' | 'uploading' | 'submitting'>('idle');
   const [success, setSuccess] = useState(false);
+
+  const busy = phase !== 'idle';
 
   const validate = (): boolean => {
     const nextErrors: FormErrors = {};
@@ -51,6 +57,44 @@ export default function ReportScreen() {
     if (!category) nextErrors.category = 'Please select a category.';
     setErrors(nextErrors);
     return Object.keys(nextErrors).length === 0;
+  };
+
+  const handleTakePhoto = async () => {
+    const permission = await ImagePicker.requestCameraPermissionsAsync();
+    if (!permission.granted) {
+      setSubmitError('Camera access is needed to take a photo. You can enable it in your device settings.');
+      return;
+    }
+
+    const result = await ImagePicker.launchCameraAsync({
+      mediaTypes: ['images'],
+      quality: 0.7,
+    });
+
+    if (!result.canceled && result.assets[0]) {
+      setSubmitError(null);
+      setPhotoUri(result.assets[0].uri);
+    }
+  };
+
+  const handleChooseFromGallery = async () => {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      setSubmitError(
+        'Photo library access is needed to choose a photo. You can enable it in your device settings.'
+      );
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      quality: 0.7,
+    });
+
+    if (!result.canceled && result.assets[0]) {
+      setSubmitError(null);
+      setPhotoUri(result.assets[0].uri);
+    }
   };
 
   const handleSubmit = async () => {
@@ -64,25 +108,41 @@ export default function ReportScreen() {
       return;
     }
 
-    setSubmitting(true);
     try {
+      let imageUrl: string | null = null;
+
+      if (photoUri) {
+        setPhase('uploading');
+        try {
+          imageUrl = await uploadImageToCloudinary(photoUri);
+        } catch (error) {
+          setSubmitError(
+            error instanceof Error ? error.message : 'Failed to upload photo. Please try again.'
+          );
+          return;
+        }
+      }
+
+      setPhase('submitting');
       await createReport({
         userId: user.uid,
         title: title.trim(),
         description: description.trim(),
         category,
+        imageUrl,
       });
 
       setTitle('');
       setDescription('');
       setCategory(null);
+      setPhotoUri(null);
       setErrors({});
       setSuccess(true);
     } catch (error) {
       console.error('Failed to submit report:', error);
       setSubmitError('Something went wrong submitting your report. Please try again.');
     } finally {
-      setSubmitting(false);
+      setPhase('idle');
     }
   };
 
@@ -155,12 +215,60 @@ export default function ReportScreen() {
           <View className="mb-3" />
         )}
 
+        <View className="mb-1 flex-row items-center gap-2">
+          <Text className="text-sm font-medium text-gray-700">Photo</Text>
+          <View className="rounded-full bg-accent/15 px-2 py-0.5">
+            <Text className="text-xs font-medium text-accent-dark">Optional</Text>
+          </View>
+        </View>
+
+        {photoUri ? (
+          <View className="mb-3">
+            <Image source={{ uri: photoUri }} className="mb-2 h-40 w-full rounded-lg" resizeMode="cover" />
+            <View className="flex-row gap-3">
+              <Pressable
+                onPress={handleTakePhoto}
+                className="flex-1 items-center rounded-lg border border-primary px-4 py-2.5">
+                <Text className="text-sm font-semibold text-primary">Retake</Text>
+              </Pressable>
+              <Pressable
+                onPress={handleChooseFromGallery}
+                className="flex-1 items-center rounded-lg border border-primary px-4 py-2.5">
+                <Text className="text-sm font-semibold text-primary">Change</Text>
+              </Pressable>
+              <Pressable
+                onPress={() => setPhotoUri(null)}
+                className="flex-1 items-center rounded-lg border border-error px-4 py-2.5">
+                <Text className="text-sm font-semibold text-error">Remove</Text>
+              </Pressable>
+            </View>
+          </View>
+        ) : (
+          <View className="mb-3 flex-row gap-3">
+            <Pressable
+              onPress={handleTakePhoto}
+              className="flex-1 items-center rounded-lg border border-primary px-4 py-3">
+              <Text className="text-sm font-semibold text-primary">Take Photo</Text>
+            </Pressable>
+            <Pressable
+              onPress={handleChooseFromGallery}
+              className="flex-1 items-center rounded-lg border border-primary px-4 py-3">
+              <Text className="text-sm font-semibold text-primary">Choose from Gallery</Text>
+            </Pressable>
+          </View>
+        )}
+
         <Pressable
           onPress={handleSubmit}
-          disabled={submitting}
-          className={`mt-4 items-center rounded-lg bg-primary px-4 py-3 ${submitting ? 'opacity-60' : ''}`}>
-          {submitting ? (
-            <ActivityIndicator color="#fff" />
+          disabled={busy}
+          className={`mt-4 items-center rounded-lg bg-primary px-4 py-3 ${busy ? 'opacity-60' : ''}`}>
+          {busy ? (
+            <View className="flex-row items-center gap-2">
+              <ActivityIndicator color="#fff" />
+              <Text className="text-base font-semibold text-white">
+                {phase === 'uploading' ? 'Uploading photo...' : 'Submitting...'}
+              </Text>
+            </View>
           ) : (
             <Text className="text-base font-semibold text-white">Submit Report</Text>
           )}
