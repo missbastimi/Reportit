@@ -19,6 +19,9 @@ const MAPPING = {
   'exclamationmark.bubble.fill': 'report-problem',
   'location.fill': 'my-location',
   'mappin.circle.fill': 'place',
+  'list.bullet.clipboard.fill': 'assignment',
+  'tray.fill': 'inbox',
+  'photo.fill': 'image',
   'chevron.left.forwardslash.chevron.right': 'code',
   'chevron.right': 'chevron-right',
 } as IconMapping;
