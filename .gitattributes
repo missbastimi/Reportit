@@ -1,0 +1,35 @@
+# Normalize line endings for a cross-platform (Windows + macOS/Linux) team.
+# All text files are stored in the repo with LF; Git converts to the
+# platform's native line ending on checkout only if core.autocrlf is set
+# (eol=lf below pins the checkout format to LF regardless, which is the
+# recommended approach for a JS/TS codebase edited across platforms).
+
+# Default: treat any file Git detects as text, normalize to LF in the repo.
+* text=auto eol=lf
+
+# Source and config files
+*.ts    text eol=lf
+*.tsx   text eol=lf
+*.js    text eol=lf
+*.jsx   text eol=lf
+*.json  text eol=lf
+*.md    text eol=lf
+*.css   text eol=lf
+*.rules text eol=lf
+*.html  text eol=lf
+*.yml   text eol=lf
+*.yaml  text eol=lf
+
+# Binary files: never touch, never diff as text.
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.webp  binary
+*.ico   binary
+*.ttf   binary
+*.otf   binary
+*.woff  binary
+*.woff2 binary
+*.mp4   binary
+*.pdf   binary
