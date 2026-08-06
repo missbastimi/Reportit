@@ -1,13 +1,17 @@
 import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { HelloWave } from '@/components/hello-wave';
 import ParallaxScrollView from '@/components/parallax-scroll-view';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Link } from 'expo-router';
+import { signOutUser } from '@/lib/auth';
+import { useAuthStore } from '@/store/useAuthStore';
 
 export default function HomeScreen() {
+  const profile = useAuthStore((state) => state.profile);
+
   return (
     <ParallaxScrollView
       headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
@@ -21,6 +25,19 @@ export default function HomeScreen() {
         <ThemedText type="title">Welcome!</ThemedText>
         <HelloWave />
       </ThemedView>
+      <View className="mb-2 rounded-lg bg-neutral-100 p-4">
+        <Text className="mb-3 text-sm text-neutral-600">
+          Signed in as{' '}
+          <Text className="font-semibold text-neutral-900">
+            {profile?.email ?? 'unknown'}
+          </Text>
+        </Text>
+        <Pressable
+          onPress={() => signOutUser()}
+          className="items-center rounded-lg bg-error px-4 py-3">
+          <Text className="text-base font-semibold text-white">Sign Out</Text>
+        </Pressable>
+      </View>
       <ThemedView style={styles.stepContainer}>
         <ThemedText type="subtitle">Step 1: Try it</ThemedText>
         <ThemedText>
