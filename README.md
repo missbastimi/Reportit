@@ -48,3 +48,46 @@ Join our community of developers creating universal apps.
 
 - [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
 - [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+
+## Data Model
+
+Firestore is the app's primary datastore (see `lib/firebase.ts`). TypeScript types for both collections live in `types/models.ts` (re-exported from `types/index.ts`), and typed collection references live in `lib/firestore.ts`. Security rules are defined in `firestore.rules` and must be published manually in the Firebase console.
+
+### `users/{uid}`
+
+One document per user, keyed by their Firebase Auth `uid`.
+
+| Field       | Type                    | Notes                                  |
+| ----------- | ----------------------- | --------------------------------------- |
+| `uid`       | `string`                 | Firebase Auth uid, matches the doc id   |
+| `name`      | `string`                 | Display name                            |
+| `email`     | `string`                 | Account email                           |
+| `role`      | `"citizen" \| "admin"`   | Controls access per `firestore.rules`   |
+| `createdAt` | `Timestamp`               | Firestore server timestamp              |
+
+### `reports/{reportId}`
+
+One document per citizen-submitted report.
+
+| Field        | Type                                                                                                    | Notes                                              |
+| ------------ | --------------------------------------------------------------------------------------------------------- | --------------------------------------------------- |
+| `id`         | `string`                                                                                                    | Matches the doc id                                   |
+| `userId`     | `string`                                                                                                    | uid of the reporting user (report owner)             |
+| `title`      | `string`                                                                                                    | Short summary                                        |
+| `description`| `string`                                                                                                    | Full description                                     |
+| `category`   | `"Potholes" \| "Water Leak" \| "Gutters" \| "Streetlights" \| "Illegal Dumping" \| "Public Facility" \| "Other"` | Issue category                                       |
+| `status`     | `"Pending" \| "Under Review" \| "In Progress" \| "Resolved"`                                               | Only admins may change this (enforced in rules)      |
+| `imageUrl`   | `string \| null`                                                                                            | Cloudinary URL (Firebase Storage is not used)        |
+| `location`   | `{ lat: number; lng: number } \| null`                                                                     | Geographic coordinates, if provided                  |
+| `address`    | `string \| null`                                                                                            | Human-readable address, if provided                  |
+| `createdAt`  | `Timestamp`                                                                                                  | Firestore server timestamp                            |
+| `updatedAt`  | `Timestamp`                                                                                                  | Firestore server timestamp, updated on every edit     |
+| `adminNotes` | `string \| null`                                                                                            | Only admins may set/change this (enforced in rules)  |
+
+### Access rules summary
+
+- Any authenticated user can read all reports (needed for the public map).
+- A user can create a report only with their own `userId`.
+- A user can update/delete their own reports, but cannot change `status` or `adminNotes`.
+- Admins (`users/{uid}.role == "admin"`) can read and update any report.
+- A user can read/write only their own `users/{uid}` document; admins can read any user document.

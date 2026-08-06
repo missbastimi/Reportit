@@ -1,0 +1,56 @@
+rules_version = '2';
+
+// NOTE: These rules must be published manually in the Firebase console
+// (Firestore Database > Rules) to replace the default test-mode rules.
+// This file is the source of truth for review; it is not auto-deployed.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Returns true if the request is made by a signed-in user.
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // Returns true if the signed-in user's uid matches the given uid.
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    // Returns true if the signed-in user's own users/{uid} doc has role == "admin".
+    // Reads the caller's own document, which is always allowed by the users rules below.
+    function isAdmin() {
+      return isSignedIn() &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    match /users/{uid} {
+      // A user can read only their own profile document; admins can read any profile.
+      allow read: if isOwner(uid) || isAdmin();
+
+      // A user can create/update only their own profile document.
+      // (Role escalation should be handled server-side / via console, not client writes;
+      // this app does not currently restrict which fields a user may change on their own doc.)
+      allow write: if isOwner(uid);
+    }
+
+    match /reports/{reportId} {
+      // Any authenticated user can read reports (needed for the public map view).
+      allow read: if isSignedIn();
+
+      // A user can create a report only if they set themselves as the owner.
+      allow create: if isOwner(request.resource.data.userId);
+
+      // Admins can update any report (e.g. to change status or add adminNotes).
+      // A non-admin owner can update their own report, but only if status and
+      // adminNotes are left unchanged from the existing document.
+      allow update: if isAdmin() ||
+        (isOwner(resource.data.userId) &&
+          request.resource.data.status == resource.data.status &&
+          request.resource.data.adminNotes == resource.data.adminNotes);
+
+      // A user can delete only their own report; admins can delete any report.
+      allow delete: if isOwner(resource.data.userId) || isAdmin();
+    }
+  }
+}
