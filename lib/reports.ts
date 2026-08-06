@@ -9,6 +9,8 @@ export type NewReportInput = {
   description: string;
   category: Category;
   imageUrl: string | null;
+  location: { lat: number; lng: number } | null;
+  address: string | null;
 };
 
 export async function createReport(input: NewReportInput): Promise<string> {
@@ -25,8 +27,8 @@ export async function createReport(input: NewReportInput): Promise<string> {
     category: input.category,
     status: 'Pending',
     imageUrl: input.imageUrl,
-    location: null,
-    address: null,
+    location: input.location,
+    address: input.address,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
     adminNotes: null,

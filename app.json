@@ -46,6 +46,12 @@
           "cameraPermission": "Reportit uses your camera so you can take a photo to attach to a report.",
           "microphonePermission": false
         }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "ReportIt uses your location to tag where an issue is happening."
+        }
       ]
     ],
     "experiments": {

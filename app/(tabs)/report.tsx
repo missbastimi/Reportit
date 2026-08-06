@@ -1,3 +1,4 @@
+import { IconSymbol } from '@/components/ui/icon-symbol';
 import * as ImagePicker from 'expo-image-picker';
 import { useState } from 'react';
 import {
@@ -13,6 +14,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { uploadImageToCloudinary } from '@/lib/cloudinary';
+import { getCurrentLocation, reverseGeocode, type Coordinates } from '@/lib/location';
 import { createReport } from '@/lib/reports';
 import { isNonEmpty } from '@/lib/validation';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -42,6 +44,11 @@ export default function ReportScreen() {
   const [category, setCategory] = useState<Category | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [photoUri, setPhotoUri] = useState<string | null>(null);
+
+  const [locationCoords, setLocationCoords] = useState<Coordinates | null>(null);
+  const [locationAddress, setLocationAddress] = useState<string | null>(null);
+  const [locationError, setLocationError] = useState<string | null>(null);
+  const [locating, setLocating] = useState(false);
 
   const [errors, setErrors] = useState<FormErrors>({});
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -97,6 +104,31 @@ export default function ReportScreen() {
     }
   };
 
+  const handleUseCurrentLocation = async () => {
+    setLocationError(null);
+    setLocating(true);
+    try {
+      const coords = await getCurrentLocation();
+      setLocationCoords(coords);
+      const address = await reverseGeocode(coords.lat, coords.lng);
+      setLocationAddress(address);
+    } catch (error) {
+      setLocationCoords(null);
+      setLocationAddress(null);
+      setLocationError(
+        error instanceof Error ? error.message : 'Could not access your location.'
+      );
+    } finally {
+      setLocating(false);
+    }
+  };
+
+  const handleClearLocation = () => {
+    setLocationCoords(null);
+    setLocationAddress(null);
+    setLocationError(null);
+  };
+
   const handleSubmit = async () => {
     setSubmitError(null);
     setSuccess(false);
@@ -130,12 +162,17 @@ export default function ReportScreen() {
         description: description.trim(),
         category,
         imageUrl,
+        location: locationCoords,
+        address: locationAddress,
       });
 
       setTitle('');
       setDescription('');
       setCategory(null);
       setPhotoUri(null);
+      setLocationCoords(null);
+      setLocationAddress(null);
+      setLocationError(null);
       setErrors({});
       setSuccess(true);
     } catch (error) {
@@ -256,6 +293,68 @@ export default function ReportScreen() {
               <Text className="text-sm font-semibold text-primary">Choose from Gallery</Text>
             </Pressable>
           </View>
+        )}
+
+        <View className="mb-1 flex-row items-center gap-2">
+          <Text className="text-sm font-medium text-gray-700">Location</Text>
+          <View className="rounded-full bg-accent/15 px-2 py-0.5">
+            <Text className="text-xs font-medium text-accent-dark">Optional</Text>
+          </View>
+        </View>
+
+        {locationCoords ? (
+          <View className="mb-1 flex-row items-center rounded-lg border border-gray-200 px-4 py-3">
+            <IconSymbol name="mappin.circle.fill" size={20} color="#0F766E" />
+            <Text className="ml-2 flex-1 text-base text-gray-900" numberOfLines={2}>
+              {locationAddress ?? `${locationCoords.lat.toFixed(5)}, ${locationCoords.lng.toFixed(5)}`}
+            </Text>
+          </View>
+        ) : null}
+
+        {locationError ? (
+          <Text className="mb-1 text-sm text-error">{locationError}</Text>
+        ) : null}
+
+        {locationCoords ? (
+          <View className="mb-3 flex-row gap-3">
+            <Pressable
+              onPress={handleUseCurrentLocation}
+              disabled={locating}
+              className={`flex-1 items-center rounded-lg border border-primary px-4 py-2.5 ${locating ? 'opacity-60' : ''}`}>
+              {locating ? (
+                <ActivityIndicator color="#0F766E" />
+              ) : (
+                <Text className="text-sm font-semibold text-primary">Refresh</Text>
+              )}
+            </Pressable>
+            <Pressable
+              onPress={handleClearLocation}
+              disabled={locating}
+              className="flex-1 items-center rounded-lg border border-error px-4 py-2.5">
+              <Text className="text-sm font-semibold text-error">Clear</Text>
+            </Pressable>
+          </View>
+        ) : (
+          <Pressable
+            onPress={handleUseCurrentLocation}
+            disabled={locating}
+            className={`mb-3 flex-row items-center justify-center rounded-lg border border-primary px-4 py-3 ${locating ? 'opacity-60' : ''}`}>
+            {locating ? (
+              <>
+                <ActivityIndicator color="#0F766E" />
+                <Text className="ml-2 text-sm font-semibold text-primary">
+                  Getting your location...
+                </Text>
+              </>
+            ) : (
+              <>
+                <IconSymbol name="location.fill" size={18} color="#0F766E" />
+                <Text className="ml-2 text-sm font-semibold text-primary">
+                  Use my current location
+                </Text>
+              </>
+            )}
+          </Pressable>
         )}
 
         <Pressable
