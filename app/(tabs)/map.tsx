@@ -112,6 +112,13 @@ const LEAFLET_HTML = `
         points.push([lat, lng]);
       });
 
+      // The WebView's container can report a stale/zero size at the moment
+      // Leaflet is constructed (before the native layout pass has settled),
+      // which makes fitBounds compute against the wrong viewport. Force a
+      // re-measure right before fitting — cheap, and the standard fix for
+      // Leaflet maps rendered inside dynamically-sized containers.
+      map.invalidateSize();
+
       if (points.length > 0) {
         map.fitBounds(points, { padding: [40, 40], maxZoom: MAX_FIT_ZOOM });
       } else {
@@ -155,7 +162,16 @@ export default function MapScreen() {
   }, []);
 
   useEffect(() => {
-    if (!mapReady) return;
+    // Wait for both signals before ever calling setReports: the WebView
+    // posting "ready" (map/Leaflet initialized) AND Firestore's first
+    // snapshot actually resolving (loading -> false). Without the `loading`
+    // gate, if "ready" arrives before Firestore responds, this would inject
+    // an empty array — indistinguishable from "genuinely zero reports" —
+    // and fitBounds would never run against the real data, since the
+    // fallback view is applied as if there truly were no pins. Reports that
+    // arrive after this (real-time updates) still flow through normally,
+    // since `reports` stays in the dependency array.
+    if (!mapReady || loading) return;
 
     const payload: MapReport[] = reports
       .filter(
@@ -174,7 +190,7 @@ export default function MapScreen() {
       }));
 
     webViewRef.current?.injectJavaScript(`window.setReports(${JSON.stringify(payload)}); true;`);
-  }, [mapReady, reports]);
+  }, [mapReady, loading, reports]);
 
   return (
     <SafeAreaView className="flex-1 bg-white">

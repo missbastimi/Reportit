@@ -1,10 +1,10 @@
+import { SelectField } from '@/components/SelectField';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import * as ImagePicker from 'expo-image-picker';
 import { useState } from 'react';
 import {
   ActivityIndicator,
   Image,
-  Modal,
   Pressable,
   ScrollView,
   Text,
@@ -33,7 +33,6 @@ export default function ReportScreen() {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState<Category | null>(null);
-  const [pickerOpen, setPickerOpen] = useState(false);
   const [photoUri, setPhotoUri] = useState<string | null>(null);
 
   const [locationCoords, setLocationCoords] = useState<Coordinates | null>(null);
@@ -229,14 +228,14 @@ export default function ReportScreen() {
         )}
 
         <Text className="mb-1 text-sm font-medium text-gray-700">Category</Text>
-        <Pressable
-          onPress={() => setPickerOpen(true)}
-          className="mb-1 flex-row items-center justify-between rounded-lg border border-gray-200 px-4 py-3">
-          <Text className={category ? 'text-base text-gray-900' : 'text-base text-gray-400'}>
-            {category ?? 'Select a category'}
-          </Text>
-          <Text className="text-gray-400">▾</Text>
-        </Pressable>
+        <SelectField
+          sheetTitle="Select a category"
+          options={CATEGORY_ORDER}
+          value={category}
+          onSelect={setCategory}
+          placeholder="Select a category"
+          className="mb-1"
+        />
         {errors.category ? (
           <Text className="mb-3 text-sm text-error">{errors.category}</Text>
         ) : (
@@ -364,41 +363,6 @@ export default function ReportScreen() {
           )}
         </Pressable>
       </ScrollView>
-
-      <Modal
-        visible={pickerOpen}
-        animationType="slide"
-        transparent
-        onRequestClose={() => setPickerOpen(false)}>
-        <Pressable className="flex-1 justify-end bg-black/40" onPress={() => setPickerOpen(false)}>
-          <Pressable className="rounded-t-2xl bg-white p-4" onPress={() => {}}>
-            <Text className="mb-2 text-center text-base font-semibold text-gray-900">
-              Select a category
-            </Text>
-            {CATEGORY_ORDER.map((option) => (
-              <Pressable
-                key={option}
-                onPress={() => {
-                  setCategory(option);
-                  setPickerOpen(false);
-                }}
-                className="border-b border-gray-100 py-3">
-                <Text
-                  className={
-                    option === category
-                      ? 'text-base font-semibold text-primary'
-                      : 'text-base text-gray-900'
-                  }>
-                  {option}
-                </Text>
-              </Pressable>
-            ))}
-            <Pressable onPress={() => setPickerOpen(false)} className="mt-2 items-center py-3">
-              <Text className="text-base font-medium text-gray-500">Cancel</Text>
-            </Pressable>
-          </Pressable>
-        </Pressable>
-      </Modal>
     </SafeAreaView>
   );
 }

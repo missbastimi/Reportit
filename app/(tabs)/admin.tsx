@@ -5,6 +5,7 @@ import { ActivityIndicator, FlatList, Pressable, Text, TextInput, View } from 'r
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ReportCard } from '@/components/ReportCard';
+import { SelectField } from '@/components/SelectField';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { CATEGORY_ORDER } from '@/constants/category';
 import { Palette } from '@/constants/colors';
@@ -18,28 +19,6 @@ type CategoryFilter = Category | 'All';
 
 const STATUS_FILTERS: StatusFilter[] = ['All', ...ALL_STATUSES];
 const CATEGORY_FILTERS: CategoryFilter[] = ['All', ...CATEGORY_ORDER];
-
-function FilterChip({
-  label,
-  active,
-  onPress,
-}: {
-  label: string;
-  active: boolean;
-  onPress: () => void;
-}) {
-  return (
-    <Pressable
-      onPress={onPress}
-      className={`mr-2 rounded-full px-3 py-1.5 ${
-        active ? 'bg-primary' : 'border border-gray-200 bg-white'
-      }`}>
-      <Text className={`text-xs font-medium ${active ? 'text-white' : 'text-gray-700'}`}>
-        {label}
-      </Text>
-    </Pressable>
-  );
-}
 
 export default function AdminScreen() {
   const profile = useAuthStore((state) => state.profile);
@@ -133,6 +112,29 @@ export default function AdminScreen() {
       </View>
 
       <View className="px-6">
+        <View className="mb-3 flex-row gap-3">
+          <View className="flex-1">
+            <Text className="mb-1 text-xs font-medium text-gray-700">Status</Text>
+            <SelectField
+              sheetTitle="Filter by status"
+              options={STATUS_FILTERS}
+              value={statusFilter}
+              onSelect={setStatusFilter}
+              placeholder="All"
+            />
+          </View>
+          <View className="flex-1">
+            <Text className="mb-1 text-xs font-medium text-gray-700">Category</Text>
+            <SelectField
+              sheetTitle="Filter by category"
+              options={CATEGORY_FILTERS}
+              value={categoryFilter}
+              onSelect={setCategoryFilter}
+              placeholder="All"
+            />
+          </View>
+        </View>
+
         <View className="mb-3 flex-row items-center rounded-lg border border-gray-200 px-3">
           <IconSymbol name="magnifyingglass" size={16} color="#9CA3AF" />
           <TextInput
@@ -142,28 +144,6 @@ export default function AdminScreen() {
             placeholderTextColor="#9CA3AF"
             className="ml-2 flex-1 py-2.5 text-sm text-gray-900"
           />
-        </View>
-
-        <View className="mb-2 flex-row flex-wrap">
-          {STATUS_FILTERS.map((status) => (
-            <FilterChip
-              key={status}
-              label={status}
-              active={statusFilter === status}
-              onPress={() => setStatusFilter(status)}
-            />
-          ))}
-        </View>
-
-        <View className="mb-3 flex-row flex-wrap">
-          {CATEGORY_FILTERS.map((category) => (
-            <FilterChip
-              key={category}
-              label={category}
-              active={categoryFilter === category}
-              onPress={() => setCategoryFilter(category)}
-            />
-          ))}
         </View>
 
         <View className="mb-2 flex-row items-center justify-between">
