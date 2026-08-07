@@ -8,6 +8,7 @@ import 'react-native-reanimated';
 
 import { Palette } from '@/constants/colors';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useReportStatusNotifications } from '@/hooks/use-report-status-notifications';
 import { fetchUserProfile } from '@/lib/auth';
 import { auth } from '@/lib/firebase';
 import { getOnboardingComplete } from '@/lib/onboarding';
@@ -56,6 +57,10 @@ export default function RootLayout() {
 
   const onboardingComplete = useOnboardingStore((state) => state.completed);
   const setOnboardingCompleted = useOnboardingStore((state) => state.setCompleted);
+
+  // Only does anything once a user is signed in (reads directly from
+  // useAuthStore), so it's safe to mount unconditionally here.
+  useReportStatusNotifications();
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
