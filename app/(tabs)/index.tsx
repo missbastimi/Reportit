@@ -7,7 +7,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ReportCard } from '@/components/ReportCard';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Palette } from '@/constants/colors';
-import { signOutUser } from '@/lib/auth';
 import { reportsCollection } from '@/lib/firestore';
 import { useAuthStore } from '@/store/useAuthStore';
 import type { Report } from '@/types/models';
@@ -87,11 +86,8 @@ export default function HomeScreen() {
   return (
     <SafeAreaView className="flex-1 bg-white">
       <ScrollView className="flex-1" contentContainerClassName="px-6 pb-10">
-        <View className="mb-6 flex-row items-center justify-between pt-4">
+        <View className="mb-6 pt-4">
           <Text className="text-2xl font-bold text-gray-900">Hi, {firstName || 'there'}</Text>
-          <Pressable onPress={() => signOutUser()} className="p-2" hitSlop={8}>
-            <IconSymbol name="rectangle.portrait.and.arrow.right" size={22} color="#6B7280" />
-          </Pressable>
         </View>
 
         <Pressable

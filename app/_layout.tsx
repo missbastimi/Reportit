@@ -10,7 +10,9 @@ import { Palette } from '@/constants/colors';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { fetchUserProfile } from '@/lib/auth';
 import { auth } from '@/lib/firebase';
+import { getOnboardingComplete } from '@/lib/onboarding';
 import { useAuthStore } from '@/store/useAuthStore';
+import { useOnboardingStore } from '@/store/useOnboardingStore';
 
 import '@/global.css';
 
@@ -24,15 +26,21 @@ function LoadingScreen() {
 
 function RootNavigator() {
   const user = useAuthStore((state) => state.user);
+  // Guaranteed true or false by the time this renders — RootLayout only
+  // mounts it once both authLoading is false and onboardingComplete !== null.
+  const onboardingComplete = useOnboardingStore((state) => state.completed);
 
   return (
     <Stack>
-      <Stack.Protected guard={!!user}>
+      <Stack.Protected guard={onboardingComplete === false}>
+        <Stack.Screen name="onboarding" options={{ headerShown: false }} />
+      </Stack.Protected>
+      <Stack.Protected guard={onboardingComplete === true && !!user}>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
         <Stack.Screen name="report/[id]" options={{ title: 'Report' }} />
       </Stack.Protected>
-      <Stack.Protected guard={!user}>
+      <Stack.Protected guard={onboardingComplete === true && !user}>
         <Stack.Screen name="(auth)" options={{ headerShown: false }} />
       </Stack.Protected>
     </Stack>
@@ -41,10 +49,13 @@ function RootNavigator() {
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
-  const loading = useAuthStore((state) => state.loading);
+  const authLoading = useAuthStore((state) => state.loading);
   const setUser = useAuthStore((state) => state.setUser);
   const setProfile = useAuthStore((state) => state.setProfile);
   const setLoading = useAuthStore((state) => state.setLoading);
+
+  const onboardingComplete = useOnboardingStore((state) => state.completed);
+  const setOnboardingCompleted = useOnboardingStore((state) => state.setCompleted);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
@@ -63,9 +74,15 @@ export default function RootLayout() {
     return unsubscribe;
   }, [setUser, setProfile, setLoading]);
 
+  useEffect(() => {
+    getOnboardingComplete().then(setOnboardingCompleted);
+  }, [setOnboardingCompleted]);
+
+  const appReady = !authLoading && onboardingComplete !== null;
+
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      {loading ? <LoadingScreen /> : <RootNavigator />}
+      {appReady ? <RootNavigator /> : <LoadingScreen />}
       <StatusBar style="auto" />
     </ThemeProvider>
   );
