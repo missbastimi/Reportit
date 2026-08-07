@@ -1,15 +1,26 @@
-import { Stack, useLocalSearchParams } from 'expo-router';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Image, ScrollView, Text, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Alert,
+  Image,
+  Pressable,
+  ScrollView,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import WebView from 'react-native-webview';
 
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { getStatusStyle, STAGE_DOT_CLASS, STATUS_ORDER } from '@/constants/status';
+import { ALL_STATUSES, getStatusStyle, STAGE_DOT_CLASS, STATUS_ORDER } from '@/constants/status';
 import { reportsCollection } from '@/lib/firestore';
 import { formatDate } from '@/lib/format';
-import type { Report } from '@/types/models';
+import { deleteReport, updateReportStatus } from '@/lib/reports';
+import { useAuthStore } from '@/store/useAuthStore';
+import type { Report, Status } from '@/types/models';
 
 // Same Leaflet + OpenStreetMap CDN approach as the main map (app/(tabs)/map.tsx),
 // but static: a single fixed marker with all interaction disabled, since this
@@ -100,12 +111,110 @@ function StatusTimeline({ status }: { status: Report['status'] }) {
   );
 }
 
+// 'Rejected' is a terminal state, not a step on the Pending → Resolved
+// progression, so it gets its own end-state view instead of the timeline.
+function RejectedState({ reason }: { reason: string | null }) {
+  return (
+    <View className="flex-row items-start rounded-lg border border-error/30 bg-error/10 p-4">
+      <IconSymbol name="xmark.circle.fill" size={20} color="#DC2626" />
+      <View className="ml-3 flex-1">
+        <Text className="mb-1 text-sm font-semibold text-error">Rejected</Text>
+        <Text className="text-sm text-gray-700">
+          {reason && reason.trim() ? reason : 'No reason provided.'}
+        </Text>
+      </View>
+    </View>
+  );
+}
+
 export default function ReportDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const router = useRouter();
+  const profile = useAuthStore((state) => state.profile);
+  const isAdmin = profile?.role === 'admin';
 
   const [report, setReport] = useState<Report | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Admin edit draft. Seeded once from the first snapshot, then left alone —
+  // the live listener must not clobber an admin's in-progress edit if the
+  // doc changes elsewhere while they're mid-edit.
+  const [draftInitialized, setDraftInitialized] = useState(false);
+  const [selectedStatus, setSelectedStatus] = useState<Status | null>(null);
+  const [notesDraft, setNotesDraft] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [saveSuccess, setSaveSuccess] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (report && !draftInitialized) {
+      setSelectedStatus(report.status);
+      setNotesDraft(report.adminNotes ?? '');
+      setDraftInitialized(true);
+    }
+  }, [report, draftInitialized]);
+
+  const handleSave = async () => {
+    if (!report || !selectedStatus) return;
+
+    setSaveError(null);
+    setSaveSuccess(false);
+
+    if (selectedStatus === 'Rejected' && !notesDraft.trim()) {
+      setSaveError('Please provide a reason in the notes before rejecting this report.');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      await updateReportStatus(report.id, selectedStatus, notesDraft.trim() ? notesDraft.trim() : null);
+      setSaveSuccess(true);
+    } catch (err) {
+      console.error('Failed to update report:', err);
+      const code = (err as { code?: string } | null)?.code;
+      setSaveError(
+        code === 'permission-denied'
+          ? "You don't have permission to make this change."
+          : 'Could not save changes. Please try again.'
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!report) return;
+
+    setDeleteError(null);
+    setDeleting(true);
+    try {
+      await deleteReport(report.id);
+      router.back();
+    } catch (err) {
+      console.error('Failed to delete report:', err);
+      const code = (err as { code?: string } | null)?.code;
+      setDeleteError(
+        code === 'permission-denied'
+          ? "You don't have permission to delete this report."
+          : 'Could not delete this report. Please try again.'
+      );
+      setDeleting(false);
+    }
+  };
+
+  const handleDeletePress = () => {
+    Alert.alert(
+      'Delete report?',
+      'This will permanently delete this report. This cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Delete', style: 'destructive', onPress: handleConfirmDelete },
+      ]
+    );
+  };
 
   useEffect(() => {
     if (!id) return;
@@ -214,7 +323,11 @@ export default function ReportDetailScreen() {
 
           <Text className="mb-3 text-sm font-semibold text-gray-900">Status</Text>
           <View className="mb-6">
-            <StatusTimeline status={report.status} />
+            {report.status === 'Rejected' ? (
+              <RejectedState reason={report.adminNotes} />
+            ) : (
+              <StatusTimeline status={report.status} />
+            )}
           </View>
 
           <Text className="mb-1 text-sm font-semibold text-gray-900">Admin Notes</Text>
@@ -225,6 +338,91 @@ export default function ReportDetailScreen() {
           ) : (
             <Text className="mb-6 text-sm text-gray-400">No notes yet</Text>
           )}
+
+          {isAdmin ? (
+            <View className="mb-6 rounded-lg border border-accent/30 bg-accent/5 p-4">
+              <View className="mb-3 flex-row items-center">
+                <IconSymbol name="shield.fill" size={16} color="#D97706" />
+                <Text className="ml-2 text-sm font-semibold text-accent-dark">Admin Controls</Text>
+              </View>
+
+              <Text className="mb-2 text-xs font-medium text-gray-700">Status</Text>
+              <View className="mb-4 flex-row flex-wrap">
+                {ALL_STATUSES.map((option) => {
+                  const selected = selectedStatus === option;
+                  return (
+                    <Pressable
+                      key={option}
+                      onPress={() => {
+                        setSelectedStatus(option);
+                        setSaveSuccess(false);
+                        setSaveError(null);
+                      }}
+                      className={`mb-2 mr-2 rounded-full px-3 py-1.5 ${
+                        selected ? STAGE_DOT_CLASS[option] : 'border border-gray-200 bg-white'
+                      }`}>
+                      <Text className={`text-xs font-medium ${selected ? 'text-white' : 'text-gray-700'}`}>
+                        {option}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+
+              <Text className="mb-2 text-xs font-medium text-gray-700">Notes for reporter</Text>
+              <TextInput
+                value={notesDraft}
+                onChangeText={(text) => {
+                  setNotesDraft(text);
+                  setSaveSuccess(false);
+                  setSaveError(null);
+                }}
+                placeholder="Add notes visible to the reporter"
+                placeholderTextColor="#9CA3AF"
+                multiline
+                numberOfLines={4}
+                textAlignVertical="top"
+                className="mb-4 min-h-[100px] rounded-lg border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900"
+              />
+
+              <Pressable
+                onPress={handleSave}
+                disabled={saving}
+                className={`items-center rounded-lg bg-primary px-4 py-3 ${saving ? 'opacity-60' : ''}`}>
+                {saving ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text className="text-base font-semibold text-white">Save changes</Text>
+                )}
+              </Pressable>
+
+              {saveSuccess ? (
+                <Text className="mt-2 text-sm text-primary">Changes saved.</Text>
+              ) : null}
+              {saveError ? <Text className="mt-2 text-sm text-error">{saveError}</Text> : null}
+
+              <View className="mt-4 border-t border-accent/20 pt-4">
+                <Pressable
+                  onPress={handleDeletePress}
+                  disabled={deleting}
+                  className={`flex-row items-center justify-center rounded-lg border border-error px-4 py-3 ${
+                    deleting ? 'opacity-60' : ''
+                  }`}>
+                  {deleting ? (
+                    <ActivityIndicator color="#DC2626" />
+                  ) : (
+                    <>
+                      <IconSymbol name="trash.fill" size={16} color="#DC2626" />
+                      <Text className="ml-2 text-base font-semibold text-error">Delete report</Text>
+                    </>
+                  )}
+                </Pressable>
+                {deleteError ? (
+                  <Text className="mt-2 text-sm text-error">{deleteError}</Text>
+                ) : null}
+              </View>
+            </View>
+          ) : null}
 
           <View className="flex-row justify-between border-t border-gray-100 pt-4">
             <Text className="text-xs text-gray-400">Reported {formatDate(report.createdAt)}</Text>

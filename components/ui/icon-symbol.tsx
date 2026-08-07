@@ -27,6 +27,8 @@ const MAPPING = {
   'xmark.shield.fill': 'block',
   'arrow.up.arrow.down': 'swap-vert',
   'magnifyingglass': 'search',
+  'xmark.circle.fill': 'cancel',
+  'trash.fill': 'delete-forever',
   'chevron.left.forwardslash.chevron.right': 'code',
   'chevron.right': 'chevron-right',
 } as IconMapping;

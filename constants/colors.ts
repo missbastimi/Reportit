@@ -24,5 +24,6 @@ export const Palette = {
     underReview: '#3B82F6',
     inProgress: '#6366F1',
     resolved: '#16A34A',
+    rejected: '#DC2626',
   },
 } as const;

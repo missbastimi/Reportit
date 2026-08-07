@@ -8,7 +8,7 @@ import { ReportCard } from '@/components/ReportCard';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { CATEGORY_ORDER } from '@/constants/category';
 import { Palette } from '@/constants/colors';
-import { STATUS_ORDER } from '@/constants/status';
+import { ALL_STATUSES } from '@/constants/status';
 import { reportsCollection } from '@/lib/firestore';
 import { useAuthStore } from '@/store/useAuthStore';
 import type { Category, Report, Status } from '@/types/models';
@@ -16,7 +16,7 @@ import type { Category, Report, Status } from '@/types/models';
 type StatusFilter = Status | 'All';
 type CategoryFilter = Category | 'All';
 
-const STATUS_FILTERS: StatusFilter[] = ['All', ...STATUS_ORDER];
+const STATUS_FILTERS: StatusFilter[] = ['All', ...ALL_STATUSES];
 const CATEGORY_FILTERS: CategoryFilter[] = ['All', ...CATEGORY_ORDER];
 
 function FilterChip({

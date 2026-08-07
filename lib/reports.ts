@@ -1,7 +1,7 @@
-import { doc, serverTimestamp, setDoc } from 'firebase/firestore';
+import { deleteDoc, doc, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore';
 
 import { reportsCollection } from '@/lib/firestore';
-import type { Category } from '@/types/models';
+import type { Category, Status } from '@/types/models';
 
 export type NewReportInput = {
   userId: string;
@@ -35,4 +35,28 @@ export async function createReport(input: NewReportInput): Promise<string> {
   });
 
   return ref.id;
+}
+
+// Security rules restrict changing status/adminNotes to admins; a non-admin
+// (or stale session) attempting this gets a permission-denied error from
+// Firestore, which the caller should catch and surface as a friendly message.
+// `adminNotes` is optional so a status-only change doesn't touch notes at all;
+// pass `null` explicitly to clear them.
+export async function updateReportStatus(
+  reportId: string,
+  status: Status,
+  adminNotes?: string | null
+): Promise<void> {
+  const ref = doc(reportsCollection, reportId);
+
+  await updateDoc(ref, {
+    status,
+    updatedAt: serverTimestamp(),
+    ...(adminNotes !== undefined ? { adminNotes } : {}),
+  });
+}
+
+export async function deleteReport(reportId: string): Promise<void> {
+  const ref = doc(reportsCollection, reportId);
+  await deleteDoc(ref);
 }

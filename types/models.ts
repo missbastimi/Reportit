@@ -1,6 +1,6 @@
 import type { Timestamp } from 'firebase/firestore';
 
-export type Status = 'Pending' | 'Under Review' | 'In Progress' | 'Resolved';
+export type Status = 'Pending' | 'Under Review' | 'In Progress' | 'Resolved' | 'Rejected';
 
 export type Category =
   | 'Potholes'
