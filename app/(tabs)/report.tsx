@@ -13,22 +13,13 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { CATEGORY_ORDER } from '@/constants/category';
 import { uploadImageToCloudinary } from '@/lib/cloudinary';
 import { getCurrentLocation, reverseGeocode, type Coordinates } from '@/lib/location';
 import { createReport } from '@/lib/reports';
 import { isNonEmpty } from '@/lib/validation';
 import { useAuthStore } from '@/store/useAuthStore';
 import type { Category } from '@/types/models';
-
-const CATEGORIES: Category[] = [
-  'Potholes',
-  'Water Leak',
-  'Gutters',
-  'Streetlights',
-  'Illegal Dumping',
-  'Public Facility',
-  'Other',
-];
 
 type FormErrors = {
   title?: string;
@@ -384,7 +375,7 @@ export default function ReportScreen() {
             <Text className="mb-2 text-center text-base font-semibold text-gray-900">
               Select a category
             </Text>
-            {CATEGORIES.map((option) => (
+            {CATEGORY_ORDER.map((option) => (
               <Pressable
                 key={option}
                 onPress={() => {

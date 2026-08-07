@@ -23,6 +23,10 @@ const MAPPING = {
   'tray.fill': 'inbox',
   'photo.fill': 'image',
   'map.fill': 'map',
+  'shield.fill': 'admin-panel-settings',
+  'xmark.shield.fill': 'block',
+  'arrow.up.arrow.down': 'swap-vert',
+  'magnifyingglass': 'search',
   'chevron.left.forwardslash.chevron.right': 'code',
   'chevron.right': 'chevron-right',
 } as IconMapping;
