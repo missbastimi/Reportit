@@ -29,6 +29,7 @@ const MAPPING = {
   'magnifyingglass': 'search',
   'xmark.circle.fill': 'cancel',
   'trash.fill': 'delete-forever',
+  'rectangle.portrait.and.arrow.right': 'logout',
   'chevron.left.forwardslash.chevron.right': 'code',
   'chevron.right': 'chevron-right',
 } as IconMapping;
