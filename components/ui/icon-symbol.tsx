@@ -22,6 +22,7 @@ const MAPPING = {
   'list.bullet.clipboard.fill': 'assignment',
   'tray.fill': 'inbox',
   'photo.fill': 'image',
+  'map.fill': 'map',
   'chevron.left.forwardslash.chevron.right': 'code',
   'chevron.right': 'chevron-right',
 } as IconMapping;
