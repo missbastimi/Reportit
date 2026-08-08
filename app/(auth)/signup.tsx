@@ -45,7 +45,7 @@ export default function SignupScreen() {
       <View className="flex-1 justify-center px-6">
         <Text className="mb-1 text-3xl font-bold text-gray-900">Create account</Text>
         <Text className="mb-8 text-base text-gray-500">
-          Join Reportit to report issues affecting your community.
+          Join ReportIt to report issues affecting your community.
         </Text>
 
         {error ? (
